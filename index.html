@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>森林數學歷險記</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background-color: #e0f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        #game-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 350px;
+            width: 85%;
+            border: 5px solid #81c784;
+            position: relative;
+            z-index: 10; /* 確保在動畫上層 */
+        }
+        h1 { color: #2e7d32; font-size: 22px; margin-top: 0; }
+        #progress-bar { width: 100%; background-color: #eee; border-radius: 10px; margin-bottom: 15px; }
+        #progress-fill { height: 12px; background-color: #ffb74d; width: 0%; border-radius: 10px; transition: width 0.3s; }
+        #question { font-size: 40px; font-weight: bold; margin: 15px 0; color: #333; min-height: 50px; }
+        #answer-display { font-size: 32px; height: 45px; border-bottom: 3px solid #333; margin-bottom: 15px; color: #1976d2; }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        button {
+            padding: 12px;
+            font-size: 22px;
+            border: none;
+            border-radius: 12px;
+            background-color: #fff9c4;
+            box-shadow: 0 4px #fbc02d;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        button:active { box-shadow: 0 0px #fbc02d; transform: translateY(4px); }
+        button.action { background-color: #ffccbc; box-shadow: 0 4px #ff8a65; }
+        button.confirm { background-color: #c8e6c9; box-shadow: 0 4px #81c784; grid-column: span 2; }
+        #result-screen { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="play-screen">
+        <h1 id="title">第 1 / 20 題</h1>
+        <div id="progress-bar"><div id="progress-fill"></div></div>
+        <div id="question">正在準備題目...</div>
+        <div id="answer-display"></div>
+        <div class="keypad">
+            <button onclick="appendNum(1)">1</button><button onclick="appendNum(2)">2</button><button onclick="appendNum(3)">3</button>
+            <button onclick="appendNum(4)">4</button><button onclick="appendNum(5)">5</button><button onclick="appendNum(6)">6</button>
+            <button onclick="appendNum(7)">7</button><button onclick="appendNum(8)">8</button><button onclick="appendNum(9)">9</button>
+            <button class="action" onclick="clearAns()">清除</button><button onclick="appendNum(0)">0</button>
+            <button class="confirm" onclick="checkAnswer()">確定</button>
+        </div>
+    </div>
+
+    <div id="result-screen">
+        <h1 style="font-size: 36px;">🌟 完成了！ 🌟</h1>
+        <p id="final-message" style="font-size: 20px;">你完成了今天的練習！</p>
+        <p id="final-score" style="font-size: 24px; color: #f57c00; font-weight: bold;"></p>
+        <p id="final-time" style="font-size: 20px; color: #1976d2; margin-bottom: 25px;"></p>
+        <button onclick="location.reload()" style="width:100%; background-color: #bbdefb; box-shadow: 0 4px #64b5f6;">再玩一次</button>
+    </div>
+</div>
+
+<script>
+    let currentQuestion = 1;
+    let totalQuestions = 20;
+    let score = 0;
+    let correctAnswer = 0;
+    let currentInput = "";
+    let isChecking = false; // 防止連點
+    let startTime, endTime; // 計時用變數
+
+    function generateQuestion() {
+        if (currentQuestion > totalQuestions) {
+            showResult();
+            return;
+        }
+        
+        document.getElementById('title').innerText = `第 ${currentQuestion} / ${totalQuestions} 題`;
+        document.getElementById('progress-fill').style.width = `${((currentQuestion-1)/totalQuestions)*100}%`;
+        
+        let type = Math.random() > 0.5 ? '+' : '-';
+        let a, b;
+
+        if (type === '+') {
+            correctAnswer = Math.floor(Math.random() * 21); // 0-20
+            a = Math.floor(Math.random() * (correctAnswer + 1));
+            b = correctAnswer - a;
+        } else {
+            a = Math.floor(Math.random() * 21); // 0-20
+            b = Math.floor(Math.random() * (a + 1));
+            correctAnswer = a - b;
+        }
+
+        document.getElementById('question').innerText = `${a} ${type} ${b} = ?`;
+        currentInput = "";
+        updateDisplay();
+        isChecking = false;
+    }
+
+    function appendNum(num) {
+        if (currentInput.length < 2 && !isChecking) {
+            currentInput += num;
+            updateDisplay();
+        }
+    }
+
+    function clearAns() {
+        if(!isChecking) {
+            currentInput = "";
+            updateDisplay();
+        }
+    }
+
+    function updateDisplay() {
+        document.getElementById('answer-display').innerText = currentInput;
+    }
+
+    function checkAnswer() {
+        if (currentInput === "" || isChecking) return;
+        isChecking = true;
+
+        if (parseInt(currentInput) === correctAnswer) {
+            score++;
+            document.getElementById('question').innerHTML = "<span style='color:#4caf50'>答對了！🌟</span>";
+        } else {
+            document.getElementById('question').innerHTML = `<span style="color:#e57373">答案是 ${correctAnswer}</span>`;
+        }
+
+        setTimeout(() => {
+            currentQuestion++;
+            generateQuestion();
+        }, 1200);
+    }
+
+    function showResult() {
+        // 1. 記錄結束時間並計算
+        endTime = new Date();
+        let timeDiff = (endTime - startTime) / 1000; // 秒數
+        let minutes = Math.floor(timeDiff / 60);
+        let seconds = Math.floor(timeDiff % 60);
+
+        // 2. 切換畫面
+        document.getElementById('play-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        document.getElementById('final-score').innerText = `得分：${score} / ${totalQuestions}`;
+        document.getElementById('final-time').innerText = `總共花了：${minutes} 分 ${seconds} 秒`;
+
+        // 3. 判斷是否全對，觸發慶祝動畫
+        if (score === totalQuestions) {
+            document.getElementById('final-message').innerText = "太厲害了！全部答對！🎉";
+            triggerConfetti();
+        } else {
+            document.getElementById('final-message').innerText = "完成練習了，繼續加油！";
+        }
+    }
+
+    // 觸發拉砲動畫的函數
+    function triggerConfetti() {
+        var duration = 3 * 1000;
+        var animationEnd = Date.now() + duration;
+        var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+        function randomInRange(min, max) { return Math.random() * (max - min) + min; }
+
+        var interval = setInterval(function() {
+          var timeLeft = animationEnd - Date.now();
+          if (timeLeft <= 0) { return clearInterval(interval); }
+          var particleCount = 50 * (timeLeft / duration);
+          // 從螢幕兩側發射
+          confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+          confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+    }
+
+    // 遊戲開始，記錄起始時間
+    startTime = new Date();
+    generateQuestion();
+</script>
+
+</body>
+</html>
